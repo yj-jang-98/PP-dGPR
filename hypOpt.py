@@ -108,33 +108,29 @@ def hyperparameter_optimization_1D(X, Y, G, config, scales, device):
 
     X = [x.to(device) for x in X]
     Y = [y.to(device) for y in Y]
+    Y_flat = [y.view(-1) for y in Y]
 
     # --- Initialize hyperparameters = [length scale, signal variance, noise varaince]
     range_half = 5.0
-    theta_estimates = torch.stack([
-        torch.tensor([
-            torch.empty(1).uniform_(low, high).item()
-            for low, high in zip(
-                [s - range_half for s in scales], 
-                [s + range_half for s in scales]
-            )
-        ])
-        for _ in range(M)
-    ]).to(device)
+    scales_tensor = torch.tensor(scales, dtype=torch.float32, device=device)
+    theta_estimates = scales_tensor.unsqueeze(0).repeat(M, 1)
+    theta_estimates += torch.empty((M, len(scales)), device=device).uniform_(-range_half, range_half)
 
     history = []
     loss_sum = []
 
     models = []
     likelihoods = []
+    mlls = []
 
 
     # --- Create GP Models with the initial hyperparameters
     for i in range(M):
         likelihood = gpytorch.likelihoods.GaussianLikelihood().to(device)
-        model = GPModel(X[i], Y[i].view(-1), likelihood).to(device)
+        model = GPModel(X[i], Y_flat[i], likelihood).to(device)
         models.append(model)
         likelihoods.append(likelihood)
+        mlls.append(gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model))
   
     start = time.perf_counter()
 
@@ -142,7 +138,7 @@ def hyperparameter_optimization_1D(X, Y, G, config, scales, device):
     for _ in range(Thyp):
         # Decay learning rate
         eta *= decay 
-        intermediates = [] 
+        intermediates = torch.empty_like(theta_estimates)
         loss_sum_tmp = 0
 
         # --- Eq. (24a)
@@ -171,9 +167,8 @@ def hyperparameter_optimization_1D(X, Y, G, config, scales, device):
             likelihood.zero_grad()
 
             # Compute local log marginal likelihood 
-            mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
             output = model(X[i])
-            loss = mll(output, Y[i].view(-1))
+            loss = mlls[i](output, Y_flat[i])
             loss_sum_tmp += loss.item()
             loss.backward()
 
@@ -184,25 +179,19 @@ def hyperparameter_optimization_1D(X, Y, G, config, scales, device):
  
             # Take a local gradient step
             grad = torch.tensor([grad_l, grad_f, grad_n], device=device)
-            update = theta_estimates[i] + eta * grad
-            intermediates.append(update)
+            intermediates[i] = theta_estimates[i] + eta * grad
 
 
         # --- Eq. (24b)
         # Take one step of secure distributed average consensus
-        consensus_result = []
-        z_ini = np.stack([param.detach().cpu().numpy() for param in intermediates]) 
+        z_ini = intermediates.detach().cpu().numpy()
         z_history = privacy_preserving_avg_consensus(z_ini, G, config, 1, device) 
-        consensus_result = z_history[-1] 
+        consensus_result = torch.tensor(z_history[-1], dtype=torch.float32, device=device)
 
         # Update hyperparameter estimates
-        theta_estimates = [
-        torch.tensor(consensus_result[i, :], dtype=torch.float32, device=device)
-        for i in range(M)
-        ]
+        theta_estimates = consensus_result
 
-        current_estimates = np.array([theta_estimates[i].detach().cpu().numpy() for i in range(M)])  
-        history.append(current_estimates)
+        history.append(theta_estimates.detach().cpu().numpy())
         loss_sum.append(loss_sum_tmp)
 
     end = time.perf_counter()   

@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from utils import *
 
-def generate_masking_parts(G, i, q, p, device):
+def generate_masking_parts(G, i, q, p, device, neighbors_plus_cache=None):
     """
     Section 3.4
 
@@ -17,8 +17,10 @@ def generate_masking_parts(G, i, q, p, device):
         {phi_ij(t)} for all agents j who are neighbors of agent i (including itself)
     """
 
-    N_i_plus = set(G.neighbors(i)) | {i}
-    N_plus_dict = {j: set(G.neighbors(j)) | {j} for j in N_i_plus}
+    N_plus_dict = neighbors_plus_cache if neighbors_plus_cache is not None else None
+    N_i_plus = N_plus_dict[i] if N_plus_dict is not None else set(G.neighbors(i)) | {i}
+    if N_plus_dict is None:
+        N_plus_dict = {j: set(G.neighbors(j)) | {j} for j in N_i_plus}
 
     # --- Eq. (15a) and (15b) using `share()`
     shares_dict = {}  # keys: (j, l), value: share vector s^i_{j->l} ∈ Z_q^p
@@ -57,7 +59,7 @@ def generate_masking_parts(G, i, q, p, device):
 
     return phi
 
-def distributed_masking_for_all(G, q, p, device):
+def distributed_masking_for_all(G, q, p, device, neighbors_plus_cache=None):
     """
     Runs Protocol 1 for all agents in the graph, producing p-dimensional masks.
 
@@ -78,7 +80,7 @@ def distributed_masking_for_all(G, q, p, device):
     # First, compute all m_ij(t) for each i
     masks_t = {}
     for i in G.nodes():
-        masks_t[i] = generate_masking_parts(G, i, q, p, device)
+        masks_t[i] = generate_masking_parts(G, i, q, p, device, neighbors_plus_cache)
 
     # Reorganize: for each agent j, collect m_ij(t) from all i
     masks_by_agent = {j: {} for j in G.nodes()}
@@ -116,7 +118,11 @@ def privacy_preserving_avg_consensus(zini, G, config, T, device):
     q = config["q"]
     Lz = config["Lz"]
     Lw = config["Lw"]
+    LwLz = Lw * Lz
     Wbar = torch.tensor(config["Wbar"], dtype=torch.float32, device=device)
+    nodes = list(G.nodes())
+    neighbors = {i: list(G.neighbors(i)) for i in nodes}
+    neighbors_plus_cache = {i: set(neighbors[i]) | {i} for i in nodes}
 
     if isinstance(zini, np.ndarray):
         z = torch.tensor(zini, dtype=torch.float32, device=device)
@@ -128,22 +134,22 @@ def privacy_preserving_avg_consensus(zini, G, config, T, device):
 
     for _ in range(T):
         z_next = torch.zeros_like(z)
+        z_q = torch.round(z / Lz).to(torch.int64)
 
-        # Run Protocol 1 for all agents
-        masks_by_agent = distributed_masking_for_all(G, q, p, device)
+        # Run Protocol 1 for all agents (cache neighbors to avoid recompute)
+        masks_by_agent = distributed_masking_for_all(G, q, p, device, neighbors_plus_cache)
 
-        for i in G.nodes():
-            z_i_q = torch.round(z[i] / Lz).to(torch.int64)  # shape (p,)
+        for i in nodes:
+            z_i_q = z_q[i]  # shape (p,)
             sum_term = torch.zeros(p, dtype=torch.int64, device=device)
 
-            for j in G.neighbors(i):
+            for j in neighbors[i]:
                 m_ij = masks_by_agent[j][i]       # shape (p,)
-                z_j_q = torch.round(z[j] / Lz).to(torch.int64)    # shape (p,)
+                z_j_q = z_q[j]                    # shape (p,)
                 w_ij = Wbar[i, j]                 # scalar
 
                 zeta_ij = (w_ij * z_j_q).to(torch.int64) + m_ij
                 sum_term = (sum_term + zeta_ij - (w_ij * z_i_q).to(torch.int64)) % q
-
                 sum_term = torch.where(sum_term >= q // 2, sum_term - q, sum_term)
 
             # Add agent i's own mask
@@ -151,7 +157,7 @@ def privacy_preserving_avg_consensus(zini, G, config, T, device):
             total = (m_ii + sum_term) % q
             total = torch.where(total >= q // 2, total - q, total)
 
-            z_next[i] = z[i] + (Lw * Lz * total).float()
+            z_next[i] = z[i] + (LwLz * total).float()
 
         z = z_next
         z_history_pp.append(z.clone())

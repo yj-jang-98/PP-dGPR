@@ -3,14 +3,21 @@ import numpy as np
 from matplotlib.ticker import FuncFormatter
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
-def plot_hyperparameter(sarcos_history, diab_history, config):
-    
-    plt.rcParams.update({
-        "text.usetex": True,           # Use LaTeX to render text
-        "font.family": "serif",        # Match LaTeX serif font (Computer Modern)
-        "pgf.rcfonts": False,          # Don't override LaTeX font config
-        "font.size": 24,
-    })
+def plot_hyperparameter(sarcos_history, diab_history, config, use_latex=True):
+    """Plot hyperparameter traces, optionally using LaTeX rendering."""
+    if use_latex:
+        plt.rcParams.update({
+            "text.usetex": True,           # Use LaTeX to render text
+            "font.family": "serif",        # Match LaTeX serif font (Computer Modern)
+            "pgf.rcfonts": False,          # Don't override LaTeX font config
+            "font.size": 24,
+        })
+    else:
+        plt.rcParams.update({
+            "text.usetex": False,          # Pure matplotlib mathtext, no LaTeX dependency
+            "font.family": "DejaVu Sans",
+            "font.size": 24,
+        })
 
     M = config["M"]
     T = config["Thyp"]
@@ -83,17 +90,25 @@ def plot_hyperparameter(sarcos_history, diab_history, config):
     plt.show()
 
 
-def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rmse_vars, config,Lz_values):
+def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rmse_vars, config, Lz_values, use_latex=True):
+    """Plot accuracy curves, optionally using LaTeX rendering."""
     num_Lz = len(Lz_values)
     formatter2 = FuncFormatter(custom_formatter2)
     formatter3 = FuncFormatter(custom_formatter3)
 
-    plt.rcParams.update({
-        "text.usetex": True,           # Use LaTeX to render text
-        "font.family": "serif",        # Match LaTeX serif font (Computer Modern)
-        "pgf.rcfonts": False,           # Don't override LaTeX font config
-        "font.size": 24,
-    })
+    if use_latex:
+        plt.rcParams.update({
+            "text.usetex": True,           # Use LaTeX to render text
+            "font.family": "serif",        # Match LaTeX serif font (Computer Modern)
+            "pgf.rcfonts": False,          # Don't override LaTeX font config
+            "font.size": 24,
+        })
+    else:
+        plt.rcParams.update({
+            "text.usetex": False,          # Pure matplotlib mathtext, no LaTeX dependency
+            "font.family": "DejaVu Sans",
+            "font.size": 24,
+        })
 
     colors = ['tab:blue', 'tab:orange', 'tab:green']
     markers = ['o', 's', '^']
@@ -101,9 +116,12 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
     zoom_range = range(config["T"] - 4, config["T"] + 1)
     fig, axs = plt.subplots(1, 4, figsize=(20, 4))
 
+    rmse_hat_label = r"$\mathsf{RMSE}_{\smash{\hat{f}}}(T)$" if use_latex else r"$\mathsf{RMSE}_{\hat{f}}(T)$"
+    rmse_var_label = r"$\mathsf{RMSE}_{V}(T)$"
+
     # --- SARCOS: mean
     ax = axs[0]
-    ax.set_title(r"SARCOS: $\mathsf{RMSE}_{\smash{\hat{f}}}(T)$", pad=4)
+    ax.set_title(fr"SARCOS: {rmse_hat_label}", pad=4)
     for lz_idx in range(num_Lz):
         label = fr"$\mathsf{{L}}_z = 1/10^{{{int(np.log10(Lz_values[lz_idx]))}}}$"
         ax.plot(range(config["T"]+1), sarcos_rmse_means[lz_idx].numpy(), marker=markers[lz_idx], markersize=8, label=label, 
@@ -140,7 +158,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
 
     # --- SARCOS: sigma
     ax = axs[1]
-    ax.set_title(r"SARCOS: $\mathsf{RMSE}_{V}(T)$", pad=6)
+    ax.set_title(fr"SARCOS: {rmse_var_label}", pad=6)
     for lz_idx in range(num_Lz):
         ax.plot(range(config["T"]+1), sarcos_rmse_vars[lz_idx].numpy(), marker=markers[lz_idx], 
                 linestyle=linestyles[lz_idx], alpha=1, markevery=5, markersize=8, 
@@ -176,7 +194,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
 
     # --- diabetes: mean
     ax = axs[2]
-    ax.set_title(r"Diabetes: $\mathsf{RMSE}_{\smash{\hat{f}}}(T)$", pad=5)
+    ax.set_title(fr"Diabetes: {rmse_hat_label}", pad=5)
     for lz_idx in range(num_Lz):
         ax.plot(range(config["T"]+1), diab_rmse_means[lz_idx].numpy(), marker=markers[lz_idx], 
                 linestyle=linestyles[lz_idx], alpha=1, markevery=5, markersize=8, 
@@ -210,7 +228,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
 
     # --- diabetes: vars
     ax = axs[3]
-    ax.set_title(r"Diabetes: $\mathsf{RMSE}_{V}(T)$", pad=5)
+    ax.set_title(fr"Diabetes: {rmse_var_label}", pad=5)
     for lz_idx in range(num_Lz):
         ax.plot(range(config["T"]+1), diab_rmse_vars[lz_idx].numpy(), marker=markers[lz_idx], 
                 linestyle=linestyles[lz_idx], alpha=1, markevery=5, markersize=8,
