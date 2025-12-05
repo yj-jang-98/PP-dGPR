@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from utils import *
+import time  # ★ 추가
 
 def generate_masking_parts(G, i, q, p, device, neighbors_plus_cache=None):
     """
@@ -91,7 +92,7 @@ def distributed_masking_for_all(G, q, p, device, neighbors_plus_cache=None):
     return masks_by_agent
 
 
-def privacy_preserving_avg_consensus(zini, G, config, T, device):
+def privacy_preserving_avg_consensus(zini, G, config, T, device, comm_delay: float = 0.0):
     """
     Runs Protocol 2 with p-dimensional states and privacy-preserving masking.
 
@@ -133,6 +134,10 @@ def privacy_preserving_avg_consensus(zini, G, config, T, device):
     z_history_pp = [z.clone()]
 
     for _ in range(T):
+        # Sleep for Lines 3~7 of Protocol 1
+        if comm_delay > 0.0:
+          time.sleep(2* comm_delay)
+
         z_next = torch.zeros_like(z)
         z_q = torch.round(z / Lz).to(torch.int64)
 

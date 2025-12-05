@@ -124,7 +124,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
     ax.set_title(fr"SARCOS: {rmse_hat_label}", pad=4)
     for lz_idx in range(num_Lz):
         label = fr"$\mathsf{{L}}_z = 1/10^{{{int(np.log10(Lz_values[lz_idx]))}}}$"
-        ax.plot(range(config["T"]+1), sarcos_rmse_means[lz_idx].numpy(), marker=markers[lz_idx], markersize=8, label=label, 
+        ax.plot(range(config["T"]+1), sarcos_rmse_means[lz_idx].detach().cpu().numpy(), marker=markers[lz_idx], markersize=8, label=label, 
                 linestyle=linestyles[lz_idx], alpha=1, markevery=5, 
                 linewidth=2.5, color=colors[lz_idx])
         
@@ -142,7 +142,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
                         loc='upper right', borderpad=0)
 
     for lz_idx in [1, 2]:
-        axins.plot(zoom_range, sarcos_rmse_means[lz_idx, -5:].numpy(),
+        axins.plot(zoom_range, sarcos_rmse_means[lz_idx, -5:].detach().cpu().numpy(),
                     linestyle=linestyles[lz_idx], linewidth=2.5,
                     alpha=1, color=colors[lz_idx])
 
@@ -160,7 +160,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
     ax = axs[1]
     ax.set_title(fr"SARCOS: {rmse_var_label}", pad=6)
     for lz_idx in range(num_Lz):
-        ax.plot(range(config["T"]+1), sarcos_rmse_vars[lz_idx].numpy(), marker=markers[lz_idx], 
+        ax.plot(range(config["T"]+1), sarcos_rmse_vars[lz_idx].detach().cpu().numpy(), marker=markers[lz_idx], 
                 linestyle=linestyles[lz_idx], alpha=1, markevery=5, markersize=8, 
                 linewidth=2.5, color=colors[lz_idx]) 
     ax.set_xlabel(r"$T$")
@@ -177,7 +177,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
                         loc='upper right', borderpad=0)
 
     for lz_idx in [1, 2]:
-        axins.plot(zoom_range, sarcos_rmse_vars[lz_idx, -5:].numpy(),
+        axins.plot(zoom_range, sarcos_rmse_vars[lz_idx, -5:].detach().cpu().numpy(),
                     linestyle=linestyles[lz_idx], linewidth=2.5,
                     alpha=1, color=colors[lz_idx])
 
@@ -196,7 +196,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
     ax = axs[2]
     ax.set_title(fr"Diabetes: {rmse_hat_label}", pad=5)
     for lz_idx in range(num_Lz):
-        ax.plot(range(config["T"]+1), diab_rmse_means[lz_idx].numpy(), marker=markers[lz_idx], 
+        ax.plot(range(config["T"]+1), diab_rmse_means[lz_idx].detach().cpu().numpy(), marker=markers[lz_idx], 
                 linestyle=linestyles[lz_idx], alpha=1, markevery=5, markersize=8, 
                 linewidth=2, color=colors[lz_idx])
         
@@ -214,7 +214,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
                         loc='upper right', borderpad=0)
 
     for lz_idx in [0, 1, 2]:
-        axins.plot(zoom_range, diab_rmse_means[lz_idx, -5:].numpy(),
+        axins.plot(zoom_range, diab_rmse_means[lz_idx, -5:].detach().cpu().numpy(),
                     linestyle=linestyles[lz_idx], linewidth=2.5,
                     alpha=1, color=colors[lz_idx])
 
@@ -230,7 +230,7 @@ def plot_accuracy(sarcos_rmse_means, sarcos_rmse_vars, diab_rmse_means, diab_rms
     ax = axs[3]
     ax.set_title(fr"Diabetes: {rmse_var_label}", pad=5)
     for lz_idx in range(num_Lz):
-        ax.plot(range(config["T"]+1), diab_rmse_vars[lz_idx].numpy(), marker=markers[lz_idx], 
+        ax.plot(range(config["T"]+1), diab_rmse_vars[lz_idx].detach().cpu().numpy(), marker=markers[lz_idx], 
                 linestyle=linestyles[lz_idx], alpha=1, markevery=5, markersize=8,
                 linewidth=2, color=colors[lz_idx])
         
