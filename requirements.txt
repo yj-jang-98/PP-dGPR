@@ -1,0 +1,16 @@
+# Python dependencies for both experiment notebooks.
+# GPyTorch uses the same version range as the Colab setup cell.
+gpytorch>=1.14,<2
+ipython
+jinja2
+jupyterlab
+matplotlib
+nbformat
+networkx
+numpy
+pandas
+psutil
+scikit-learn
+scipy
+torch
+tqdm
